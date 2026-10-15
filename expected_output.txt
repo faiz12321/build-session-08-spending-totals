@@ -1,4 +1,5 @@
 File: sample/spending.csv
+All amounts are treated as one currency. Nothing is converted.
 Used 8 rows from 2026-03-01 to 2026-03-10. Skipped 3 row(s) that could not be read, and 1 blank line(s).
 
 Money out: 1,351.40
