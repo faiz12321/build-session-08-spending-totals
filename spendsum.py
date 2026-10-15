@@ -3,6 +3,8 @@
 Usage:  python spendsum.py FILE.csv
 The file needs the columns Date, Description, Amount and Category.
 Dates look like 2026-03-15. Money going out is negative, money coming in is positive.
+All amounts are taken to be in ONE currency. The tool does not read currency names or
+convert anything; amounts with other symbols or codes are listed as unreadable.
 """
 import csv
 import re
@@ -11,7 +13,7 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 NEEDED = ["date", "description", "amount", "category"]
-PLAIN = re.compile(r"^\d{1,3}(,\d{3})*(\.\d+)?$|^\d+(\.\d+)?$")
+PLAIN = re.compile(r"^\d{1,3}(,\d{3})*(\.\d{1,2})?$|^\d{1,12}(\.\d{1,2})?$", re.ASCII)
 
 
 def parse_amount(text):
@@ -26,6 +28,10 @@ def parse_amount(text):
             raw = raw[1:].strip()
         raw = raw.lstrip("$").strip()
     if not PLAIN.match(raw):
+        if re.match(r"^\d[\d,]*\.\d{3,}$", raw):
+            raise ValueError(f"more than 2 decimal places, not rounded: {text.strip()}")
+        if re.match(r"^[\d,]*\d{13,}", raw):
+            raise ValueError(f"number too large for this tool: {text.strip()}")
         if re.match(r"^\d+,\d{1,2}$", raw):
             raise ValueError("looks like a decimal comma (12,50); this tool expects a dot (12.50)")
         raise ValueError(f"not a number: {text.strip() or '(empty)'}")
@@ -40,11 +46,23 @@ def money(value):
     return f"{value:,.2f}"
 
 
+def iter_rows(reader):
+    """Yield rows; stop with a clear message if the quoting is broken."""
+    while True:
+        try:
+            row = next(reader)
+        except StopIteration:
+            return
+        except csv.Error as error:
+            raise ValueError(f"Broken quotes or layout near line {reader.line_num}: {error}. Nothing was totalled.")
+        yield row
+
+
 def read_rows(path):
     """Return (rows, problems, blank_count). Every line that cannot be used is listed in problems."""
     rows, problems, blanks = [], [], 0
     with open(path, encoding="utf-8-sig", newline="") as handle:
-        reader = csv.reader(handle)
+        reader = csv.reader(handle, strict=True)
         header = next(reader, None)
         if header is None:
             raise ValueError("The file is empty.")
@@ -52,8 +70,11 @@ def read_rows(path):
         missing = [n for n in NEEDED if n not in names]
         if missing:
             raise ValueError("Missing column(s): " + ", ".join(missing) + ". Found: " + ", ".join(h.strip() for h in header))
+        repeated = [n for n in NEEDED if names.count(n) > 1]
+        if repeated:
+            raise ValueError("Column name appears more than once: " + ", ".join(repeated))
         at = {n: names.index(n) for n in NEEDED}
-        for row in reader:
+        for row in iter_rows(reader):
             line = reader.line_num
             if not any(cell.strip() for cell in row):
                 blanks += 1
@@ -86,7 +107,7 @@ def report(path):
         else:
             received += amount
     total_spent = sum(spent.values(), Decimal(0))
-    lines = [f"File: {path}", f"Used {len(rows)} rows" + (f" from {min(r[0] for r in rows)} to {max(r[0] for r in rows)}" if rows else "") + f". Skipped {len(problems)} row(s) that could not be read, and {blanks} blank line(s).", "",
+    lines = [f"File: {path}", "All amounts are treated as one currency. Nothing is converted.", f"Used {len(rows)} rows" + (f" from {min(r[0] for r in rows)} to {max(r[0] for r in rows)}" if rows else "") + f". Skipped {len(problems)} row(s) that could not be read, and {blanks} blank line(s).", "",
              f"Money out: {money(total_spent)}", f"Money in:  {money(received)}", f"Net:       {money(received - total_spent)}", "", "Spent by category:"]
     ranked = sorted(spent.items(), key=lambda item: (-item[1], item[0]))
     lines += [f"  {money(value):>12}  {name}" for name, value in ranked] or ["  (nothing spent)"]
