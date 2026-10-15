@@ -6,7 +6,7 @@ A small read-only Python tool built step by step. It reads a spending file saved
 
     python make_sample.py                      # makes a made-up file called sample/spending.csv
     python spendsum.py sample/spending.csv     # the report
-    python -m unittest -v                      # nineteen automated tests
+    python -m unittest -v                      # twenty-five automated tests
 
 On Windows, if `python` is not found, use `py`.
 
@@ -19,9 +19,11 @@ On Windows, if `python` is not found, use `py`.
 
 ## Notes
 
-- It uses Python's `csv` module and `Decimal` numbers, so cents add up exactly. Both come with Python (see docs.python.org/3/library/csv.html and docs.python.org/3/library/decimal.html).
+- It uses Python's `csv` module and `Decimal` numbers, which come with Python (https://docs.python.org/3/library/csv.html and https://docs.python.org/3/library/decimal.html). Decimal adds exactly for the amounts this tool accepts: up to 12 digits before the point and at most 2 after it. Anything else is listed as unreadable, not rounded.
+- One currency only. The tool does not read currency names or convert anything. It accepts a plain number, optionally with a leading `$` or in brackets, and treats every amount as the same currency. Other symbols or codes (for example a euro sign or `USD`) are listed as unreadable. If your file mixes currencies, do not use these totals.
 - It expects the columns Date, Description, Amount and Category (any order, any capital letters), dates like 2026-03-15, a dot for decimals, and negative amounts for money going out. Amounts like -12.30, $1,234.50 and (45.00) are understood. Anything else, such as 12,50 with a decimal comma, is listed as unreadable, not guessed.
-- A row with more or fewer values than the header is listed as unreadable. It is never guessed at.
+- A row with more or fewer values than the header is listed as unreadable. It is never guessed at. A column name that appears twice (for example two Amount columns), or quotes that are broken, make the tool stop with a message and total nothing.
+- A test checks that one small test file has the same bytes and modified time after a run. That is the only evidence that the tool leaves files unchanged.
 - Files saved with a semicolon between values, or in an old Windows text encoding, are not supported; the tool tells you it cannot read them.
 - Real bank exports differ a lot. This was tested only on the made-up sample and on small test files, not on a real bank export. Check the totals against your bank before you rely on them.
 - Uses only what comes with Python 3. Tested on Python 3.10 (Linux) and, by GitHub Actions, Python 3.12 on Windows and Ubuntu. Not tested on a Windows 10 or 11 desktop.
