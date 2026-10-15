@@ -37,6 +37,24 @@ class AmountTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     spendsum.parse_amount(bad)
 
+    def test_extra_decimals_are_refused_not_rounded(self):
+        for bad in ["12.345", "0.001", "1,000.999"]:
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError) as caught:
+                    spendsum.parse_amount(bad)
+                self.assertIn("decimal places", str(caught.exception))
+
+    def test_other_currencies_and_odd_digits_are_refused(self):
+        for bad in ["\u20ac12.00", "12.00 USD", "USD 12.00", "\u0663", "\uff11\uff12"]:
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    spendsum.parse_amount(bad)
+
+    def test_huge_numbers_are_refused(self):
+        self.assertEqual(spendsum.parse_amount("999999999999.99"), Decimal("999999999999.99"))
+        with self.assertRaises(ValueError):
+            spendsum.parse_amount("9999999999999.99")
+
     def test_pennies_add_up_exactly(self):
         total = sum([spendsum.parse_amount("0.10")] * 3, Decimal(0)) - spendsum.parse_amount("0.30")
         self.assertEqual(total, 0)
@@ -73,6 +91,16 @@ class FileTests(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             self.read("Date,Amount\n2026-01-01,1\n")
         self.assertIn("category", str(caught.exception))
+
+    def test_repeated_needed_column_is_refused(self):
+        with self.assertRaises(ValueError) as caught:
+            self.read("Date,Description,Amount,Category,Amount\n2026-01-01,A,1,Food,2\n")
+        self.assertIn("more than once", str(caught.exception))
+
+    def test_broken_quotes_refuse_the_whole_file(self):
+        with self.assertRaises(ValueError) as caught:
+            self.read(HEAD + '2026-01-02,"Shop"x,-3.00,Food\n')
+        self.assertIn("Nothing was totalled", str(caught.exception))
 
     def test_empty_file(self):
         with self.assertRaises(ValueError):
@@ -115,6 +143,10 @@ class ReportTests(unittest.TestCase):
     def test_missing_category(self):
         path = write(self.tmp.name, HEAD + "2026-01-02,A,-10.00,\n")
         self.assertIn("(none)", spendsum.report(path))
+
+    def test_report_says_one_currency(self):
+        path = write(self.tmp.name, HEAD + "2026-01-02,A,-10.00,Food\n")
+        self.assertIn("one currency", spendsum.report(path))
 
     def test_file_is_not_changed(self):
         path = write(self.tmp.name, HEAD + "2026-01-02,A,-10.00,Food\n")
