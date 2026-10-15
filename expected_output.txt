@@ -1,0 +1,18 @@
+File: sample/spending.csv
+Used 8 rows from 2026-03-01 to 2026-03-10. Skipped 3 row(s) that could not be read, and 1 blank line(s).
+
+Money out: 1,351.40
+Money in:  2,515.25
+Net:       1,163.85
+
+Spent by category:
+      1,200.00  Housing
+         88.60  Food
+         30.00  Transport
+         25.00  Bills
+          7.80  (none)
+
+Rows that could not be read (not included in any total):
+  line 9: has 5 columns but the header has 4 (a comma inside a value that is not in quotes?)
+  line 11: date is not like 2026-03-15: March 9
+  line 13: not a number: abc
