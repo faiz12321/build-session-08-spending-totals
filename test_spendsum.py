@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from decimal import Decimal
 from pathlib import Path
 
@@ -222,6 +223,56 @@ class SetupTests(unittest.TestCase):
         self.assertIn("Nothing was replaced or deleted",result.stderr)
         self.assertEqual(before,self.snapshot())
 
+
+class PathSafety(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+        self.base=Path(self.tmp.name);self.root=self.base/'sample'
+        self.file=make_sample.make(self.root)
+    def link(self,path,target,directory=False):
+        try:path.symlink_to(target,target_is_directory=directory)
+        except OSError:self.skipTest('Symlink creation unavailable')
+    def code(self,path):
+        with contextlib.redirect_stdout(io.StringIO()) as out:code=spendsum.main([str(path)])
+        return code,out.getvalue()
+    def test_file_link_refuses(self):
+        p=self.base/'linked';self.link(p,self.file)
+        with self.assertRaises(OSError):spendsum.read_rows(p)
+        self.assertEqual(self.code(p)[0],2)
+    def test_linked_ancestor_refuses(self):
+        p=self.base/'linked';self.link(p,self.root,True)
+        self.assertEqual(self.code(p/'spending.csv')[0],2)
+    def test_dangling_link_refuses(self):
+        p=self.base/'linked';self.link(p,self.base/'missing')
+        self.assertEqual(self.code(p)[0],2)
+    def test_self_loop_refuses(self):
+        p=self.base/'linked';self.link(p,p)
+        self.assertEqual(self.code(p)[0],2)
+    def test_hardlink_refuses(self):
+        p=self.base/'hard';os.link(self.file,p)
+        self.assertEqual(self.code(p)[0],2)
+    def test_pipe_refuses_without_blocking(self):
+        if not hasattr(os,'mkfifo'):self.skipTest('Unix pipe unavailable')
+        p=self.base/'pipe';os.mkfifo(p)
+        self.assertEqual(self.code(p)[0],2)
+    def test_directory_refuses(self):self.assertEqual(self.code(self.root)[0],2)
+    def test_traversal_refuses(self):self.assertEqual(self.code(self.root/'..'/'sample'/'spending.csv')[0],2)
+    def test_reparse_attribute_refuses(self):
+        real=Path.lstat;target=self.file
+        def fake(path,*args,**kwargs):
+            value=real(path,*args,**kwargs)
+            if path==target:return type('Reparse',(),{'st_mode':value.st_mode,'st_file_attributes':0x400})()
+            return value
+        with mock.patch.object(Path,'lstat',fake):self.assertEqual(self.code(self.file)[0],2)
+    def test_metadata_failure_nonzero(self):
+        with mock.patch.object(Path,'lstat',side_effect=OSError('forced metadata error')):
+            code,text=self.code(self.file);self.assertEqual(code,2);self.assertIn('forced metadata error',text)
+    def test_setup_linked_parent_refuses(self):
+        p=self.base/'linked';self.link(p,self.root,True)
+        with self.assertRaises(OSError):make_sample.make(p/'new')
+        self.assertFalse((self.root/'new').exists())
+    def test_setup_traversal_refuses(self):
+        with self.assertRaises(OSError):make_sample.make(self.root/'..'/'new')
 
 if __name__ == "__main__":
     unittest.main()
