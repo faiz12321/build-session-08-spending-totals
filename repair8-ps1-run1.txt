@@ -1,0 +1,99 @@
+### CMD: python --version
+Python 3.12.10
+### EXIT: 0
+
+### CMD: python make_sample.py
+Made sample/spending.csv
+### EXIT: 0
+
+### CMD: python make_sample.py
+Stopped: sample already exists. Nothing was replaced or deleted.
+### EXIT: 1
+
+### CMD: python -c "print(open('sample/spending.csv', encoding='utf-8-sig').read())"
+Date,Description,Amount,Category
+2026-03-01,Salary,"2,500.00",Income
+2026-03-02,"Supermarket, weekly shop",-84.10,Food
+2026-03-03,Bus pass,-30.00,Transport
+2026-03-04,Cafe,$-4.50,Food
+2026-03-05,Rent,"-1,200.00",Housing
+2026-03-06,Phone bill,(25.00),Bills
+
+2026-03-07,Cinema,-12,50,Fun
+2026-03-08,Refund,15.25,Food
+March 9,Taxi,-9.00,Transport
+2026-03-10,Mystery,-7.80,
+2026-03-11,Books,abc,Fun
+
+### EXIT: 0
+
+### CMD: python spendsum.py sample/spending.csv
+Total: -43.55
+### EXIT: 0
+
+### CMD: python -c "print(0.1 + 0.1 + 0.1 - 0.3)"
+5.551115123125783e-17
+### EXIT: 0
+
+### CMD: python spendsum.py sample/spending.csv
+File: sample/spending.csv
+All amounts are treated as one currency. Nothing is converted.
+Used 8 rows from 2026-03-01 to 2026-03-10. Skipped 3 row(s) that could not be read, and 1 blank line(s).
+
+Money out: 1,351.40
+Money in:  2,515.25
+Net:       1,163.85
+
+Spent by category:
+      1,200.00  Housing
+         88.60  Food
+         30.00  Transport
+         25.00  Bills
+          7.80  (none)
+
+Rows that could not be read (not included in any total):
+  line 9: has 5 columns but the header has 4 (a comma inside a value that is not in quotes?)
+  line 11: date is not like 2026-03-15: March 9
+  line 13: not a number: abc
+### EXIT: 0
+
+### CMD: python -m unittest -v
+test_dollar_and_thousands (test_spendsum.AmountTests.test_dollar_and_thousands) ... ok
+test_extra_decimals_are_refused_not_rounded (test_spendsum.AmountTests.test_extra_decimals_are_refused_not_rounded) ... ok
+test_huge_numbers_are_refused (test_spendsum.AmountTests.test_huge_numbers_are_refused) ... ok
+test_other_currencies_and_odd_digits_are_refused (test_spendsum.AmountTests.test_other_currencies_and_odd_digits_are_refused) ... ok
+test_pennies_add_up_exactly (test_spendsum.AmountTests.test_pennies_add_up_exactly) ... ok
+test_plain_and_signs (test_spendsum.AmountTests.test_plain_and_signs) ... ok
+test_refuses_unclear_text (test_spendsum.AmountTests.test_refuses_unclear_text) ... ok
+test_bad_dates (test_spendsum.FileTests.test_bad_dates) ... ok
+test_blank_lines_are_counted (test_spendsum.FileTests.test_blank_lines_are_counted) ... ok
+test_broken_quotes_refuse_the_whole_file (test_spendsum.FileTests.test_broken_quotes_refuse_the_whole_file) ... ok
+test_column_order_and_case_do_not_matter (test_spendsum.FileTests.test_column_order_and_case_do_not_matter) ... ok
+test_comma_inside_quotes_is_one_value (test_spendsum.FileTests.test_comma_inside_quotes_is_one_value) ... ok
+test_empty_file (test_spendsum.FileTests.test_empty_file) ... ok
+test_excel_marker_and_windows_line_ends (test_spendsum.FileTests.test_excel_marker_and_windows_line_ends) ... ok
+test_missing_column_names_it (test_spendsum.FileTests.test_missing_column_names_it) ... ok
+test_problem_rows_name_their_line (test_spendsum.FileTests.test_problem_rows_name_their_line) ... ok
+test_repeated_needed_column_is_refused (test_spendsum.FileTests.test_repeated_needed_column_is_refused) ... ok
+test_unquoted_extra_comma_is_refused_not_misread (test_spendsum.FileTests.test_unquoted_extra_comma_is_refused_not_misread) ... ok
+test_file_is_not_changed (test_spendsum.ReportTests.test_file_is_not_changed) ... ok
+test_main_codes (test_spendsum.ReportTests.test_main_codes) ... ok
+test_missing_category (test_spendsum.ReportTests.test_missing_category) ... ok
+test_problem_rows_are_listed_and_excluded (test_spendsum.ReportTests.test_problem_rows_are_listed_and_excluded) ... ok
+test_report_says_one_currency (test_spendsum.ReportTests.test_report_says_one_currency) ... ok
+test_sample_known_totals (test_spendsum.ReportTests.test_sample_known_totals) ... ok
+test_totals_and_order (test_spendsum.ReportTests.test_totals_and_order) ... ok
+test_cli_refuses_existing_path (test_spendsum.SetupTests.test_cli_refuses_existing_path) ... ok
+test_existing_file_preserved (test_spendsum.SetupTests.test_existing_file_preserved) ... ok
+test_existing_folder_and_nested_data_preserved (test_spendsum.SetupTests.test_existing_folder_and_nested_data_preserved) ... ok
+test_repeat_setup_and_extra_file_preserved (test_spendsum.SetupTests.test_repeat_setup_and_extra_file_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 29 tests in 0.123s
+
+OK
+### EXIT: 0
+
+### CMD: python spendsum.py nothing-here.csv
+Could not find nothing-here.csv
+### EXIT: 2
