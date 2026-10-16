@@ -7,6 +7,7 @@ adds), names with commas inside quotes, amounts with dollar signs and thousands 
 brackets for negative amounts, a blank line, and a few rows with problems.
 """
 import sys
+import stat
 from pathlib import Path
 
 LINES = [
@@ -27,7 +28,13 @@ LINES = [
 
 
 def make(folder):
-    folder = Path(folder)
+    folder = Path(folder).absolute()
+    if '..' in folder.parts:
+        raise OSError('Parent-traversal paths are unsupported.')
+    for parent in reversed(folder.parents):
+        info = parent.lstat()
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise OSError('Linked/reparse-point parents are unsupported.')
     folder.mkdir()  # Refuse any existing file, folder or link.
     target = folder / "spending.csv"
     with target.open("xb") as handle:
@@ -36,7 +43,7 @@ def make(folder):
 
 
 if __name__ == "__main__":
-    here = Path(__file__).resolve().parent
+    here = Path(__file__).absolute().parent
     try:
         make(here / "sample")
     except FileExistsError:
