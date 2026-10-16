@@ -1,37 +1,22 @@
-# Add up a spending export without trusting it blindly
+# Total a fictional spending CSV
 
-A small read-only Python tool built step by step. It reads a spending file saved as CSV (from a bank or a budgeting app), adds up money out, money in and spending by category, and lists every row it could not read instead of quietly leaving it out. It never changes the file.
+Save the three source files in a NEW empty local lesson folder.
 
-Setup creates a new sample folder, exclusively writes its fictional CSV and refuses any existing path. It never resets or replaces old sample data. Start only in a new empty lesson folder. Reports reveal categories, paths and problem details; do not share private output.
+    python make_sample.py
+    python spendsum.py sample/spending.csv
+    python -m unittest -v
 
-## Run it
+Two Windows and two Ubuntu replays use exact visible file versions. Final 41 small fixture tests pass (Unix pipe skips on Windows); symlinks may skip where unavailable. Displayed stdout is first Windows run, not mixed or normalized. Paired runs differ in unittest time. The naive prototype is intentionally wrong and only for the fictional sample before full replacement.
+Only filesystem/link behavior changes in the final checker: it refuses input or ancestor symbolic links/reparse points, hardlinks, special files and parent traversal before opening the file. Metadata/open failures return exit 2. Setup exclusively creates a NEW fictional sample and now also refuses linked ancestors/traversal. Existing paths are not reset/replaced; partial files remain on failure.
+Original CSV/date/amount/category rules and totals are retained, including the original treatment of malformed skipped rows: they are listed and omitted from totals but the report keeps its prior exit 0. That is not a complete-data or accuracy certificate. All amounts are one currency; no conversion or verified bank-export compatibility. No new parsing rule or formula-safety validation is claimed.
+The checker has no write/move/delete/network code. It reads rows into memory and can print private excerpts; it is not a resource sandbox, atomic snapshot or hostile-race defense. Stop editors/sync and do not disclose real account details. Small synthetic fixtures do not establish financial advice, real bank compatibility or behavior on every filesystem. No desktop Windows/macOS recording.
+Recorder removes only its own temporary fixture folder. Decisions and feedback are teaching text, not recorded output.
 
-    python make_sample.py                      # makes a made-up file called sample/spending.csv
-    python spendsum.py sample/spending.csv     # the report
-    python -m unittest -v                      # 29 temporary-fixture tests
+MIT code. Python separately licensed and not included.
 
-On Windows, if `python` is not found, use `py`.
+## Paired recordings
 
-## Files
+- Windows: https://github.com/faiz12321/lesson-lab/actions/runs/38968578966
+- Ubuntu: https://github.com/faiz12321/lesson-lab/actions/runs/38968693311
 
-- `spendsum.py` - the tool
-- `make_sample.py` - makes the made-up practice file
-- `test_spendsum.py` - tests
-- `expected_output.txt` - the report the lesson shows; the automated check compares against it
-
-## Evidence
-
-Two Windows and two Ubuntu recordings pass all 29 tests. Each platform's paired outputs differ only in unittest time. Displays use first Windows output, not mixed recordings. The recorder saves the visible first comma-splitting version then the final checker inside a unique temporary folder and removes only that recording folder. Setup itself stops on a second run. The checker is unchanged in this repair. Four added setup collision/repeat tests preserve nested unrelated bytes and modification times. These are limited fixture passes, not universal safety proof.
-
-## Notes
-
-- It uses Python's `csv` module and `Decimal` numbers, which come with Python (https://docs.python.org/3/library/csv.html and https://docs.python.org/3/library/decimal.html). Decimal adds exactly for the amounts this tool accepts: up to 12 digits before the point and at most 2 after it. Anything else is listed as unreadable, not rounded.
-- One currency only. The tool does not read currency names or convert anything. It accepts a plain number, optionally with a leading `$` or in brackets, and treats every amount as the same currency. Other symbols or codes (for example a euro sign or `USD`) are listed as unreadable. If your file mixes currencies, do not use these totals.
-- It expects the columns Date, Description, Amount and Category (any order, any capital letters), dates like 2026-03-15, a dot for decimals, and negative amounts for money going out. Amounts like -12.30, $1,234.50 and (45.00) are understood. Anything else, such as 12,50 with a decimal comma, is listed as unreadable, not guessed.
-- A row with more or fewer values than the header is listed as unreadable. It is never guessed at. A column name that appears twice (for example two Amount columns), or quotes that are broken, make the tool stop with a message and total nothing.
-- A test checks that one small test file has the same bytes and modified time after a run. That is the only evidence that the tool leaves files unchanged.
-- Files saved with a semicolon between values, or in an old Windows text encoding, are not supported; the tool tells you it cannot read them.
-- Real bank exports differ a lot. This was tested only on the made-up sample and on small test files, not on a real bank export. Check the totals against your bank before you rely on them.
-- Uses only what comes with Python 3. Tested on Python 3.10 (Linux) and, by GitHub Actions, Python 3.12 on Windows and Ubuntu. Not tested on a Windows 10 or 11 desktop.
-- The practice data is made up. Educational example, no warranty. Use at your own risk. This is not financial advice.
-- Code is MIT licensed (see LICENSE). Python is a separate project with its own license; this repository does not include it.
+Python filesystem reference: https://docs.python.org/3/library/os.html
