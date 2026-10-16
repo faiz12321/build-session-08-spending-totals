@@ -1,6 +1,7 @@
 """Creates a small, made-up spending export called sample/spending.csv next to this script.
 
-Run: python make_sample.py
+Run only in a new empty lesson folder: python make_sample.py
+Any existing sample path is refused, not reset or replaced.
 It copies what a bank export often looks like: a hidden marker at the start (as Excel
 adds), names with commas inside quotes, amounts with dollar signs and thousands commas,
 brackets for negative amounts, a blank line, and a few rows with problems.
@@ -27,14 +28,18 @@ LINES = [
 
 def make(folder):
     folder = Path(folder)
-    folder.mkdir(parents=True, exist_ok=True)
+    folder.mkdir()  # Refuse any existing file, folder or link.
     target = folder / "spending.csv"
-    target.write_bytes(("\ufeff" + "\r\n".join(LINES) + "\r\n").encode("utf-8"))
+    with target.open("xb") as handle:
+        handle.write(("\ufeff" + "\r\n".join(LINES) + "\r\n").encode("utf-8"))
     return target
 
 
 if __name__ == "__main__":
     here = Path(__file__).resolve().parent
-    make(here / "sample")
+    try:
+        make(here / "sample")
+    except FileExistsError:
+        raise SystemExit("Stopped: sample already exists. Nothing was replaced or deleted.")
     print("Made sample/spending.csv")
     sys.exit(0)
