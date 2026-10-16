@@ -2,6 +2,9 @@ import contextlib
 import io
 import os
 import tempfile
+import shutil
+import subprocess
+import sys
 import unittest
 from decimal import Decimal
 from pathlib import Path
@@ -155,7 +158,7 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(before, (path.read_bytes(), os.stat(path).st_mtime_ns))
 
     def test_sample_known_totals(self):
-        path = make_sample.make(self.tmp.name)
+        path = make_sample.make(Path(self.tmp.name) / "sample")
         out = spendsum.report(path)
         self.assertIn("Money out: 1,351.40", out)
         self.assertIn("Skipped 3 row(s)", out)
@@ -176,7 +179,48 @@ class ReportTests(unittest.TestCase):
         code, text = self.run_main([str(bad)])
         self.assertEqual(code, 2)
         self.assertIn("UTF-8", text)
-        self.assertEqual(self.run_main([str(make_sample.make(self.tmp.name))])[0], 0)
+        self.assertEqual(self.run_main([str(make_sample.make(Path(self.tmp.name) / "sample"))])[0], 0)
+
+
+class SetupTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name) / "sample"
+
+    def snapshot(self):
+        return sorted((p.relative_to(self.root).as_posix(),p.is_dir(),p.stat().st_mtime_ns,
+                       p.read_bytes() if p.is_file() else None) for p in self.root.rglob("*"))
+
+    def test_existing_folder_and_nested_data_preserved(self):
+        (self.root/"nested").mkdir(parents=True)
+        (self.root/"spending.csv").write_bytes(b"ORIGINAL")
+        (self.root/"nested/keep").write_bytes(b"KEEP")
+        before=self.snapshot()
+        with self.assertRaises(FileExistsError):make_sample.make(self.root)
+        self.assertEqual(before,self.snapshot())
+
+    def test_existing_file_preserved(self):
+        self.root.write_bytes(b"KEEP");before=self.root.stat().st_mtime_ns
+        with self.assertRaises(FileExistsError):make_sample.make(self.root)
+        self.assertEqual(self.root.read_bytes(),b"KEEP")
+        self.assertEqual(self.root.stat().st_mtime_ns,before)
+
+    def test_repeat_setup_and_extra_file_preserved(self):
+        make_sample.make(self.root)
+        (self.root/"extra.txt").write_bytes(b"KEEP");before=self.snapshot()
+        with self.assertRaises(FileExistsError):make_sample.make(self.root)
+        self.assertEqual(before,self.snapshot())
+
+    def test_cli_refuses_existing_path(self):
+        script=Path(self.tmp.name)/"make_sample.py"
+        shutil.copyfile(Path(make_sample.__file__),script)
+        self.root.mkdir();(self.root/"keep").write_bytes(b"KEEP")
+        before=self.snapshot()
+        result=subprocess.run([sys.executable,str(script)],capture_output=True,text=True)
+        self.assertEqual(result.returncode,1)
+        self.assertIn("Nothing was replaced or deleted",result.stderr)
+        self.assertEqual(before,self.snapshot())
 
 
 if __name__ == "__main__":
