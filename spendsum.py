@@ -7,6 +7,30 @@ All amounts are taken to be in ONE currency. The tool does not read currency nam
 convert anything; amounts with other symbols or codes are listed as unreadable.
 """
 import csv
+import os
+import stat
+from pathlib import Path
+
+def safe_input(value, directory=False):
+    path = Path(value).absolute()
+    if '..' in path.parts:
+        raise OSError('Parent-traversal paths are unsupported.')
+    for part in [*reversed(path.parents), path]:
+        info = part.lstat()
+        if stat.S_ISLNK(info.st_mode) or getattr(info, 'st_file_attributes', 0) & 0x400:
+            raise OSError('Links/reparse points are unsupported.')
+    info = path.lstat()
+    if directory:
+        if not stat.S_ISDIR(info.st_mode):
+            raise NotADirectoryError('Expected an ordinary directory.')
+    elif not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+        raise OSError('Expected an ordinary singly linked file.')
+    return path
+
+
+
+
+
 import re
 import sys
 from datetime import date
@@ -61,7 +85,7 @@ def iter_rows(reader):
 def read_rows(path):
     """Return (rows, problems, blank_count). Every line that cannot be used is listed in problems."""
     rows, problems, blanks = [], [], 0
-    with open(path, encoding="utf-8-sig", newline="") as handle:
+    with open(safe_input(path), encoding="utf-8-sig", newline="") as handle:
         reader = csv.reader(handle, strict=True)
         header = next(reader, None)
         if header is None:
